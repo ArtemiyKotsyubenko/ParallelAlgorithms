@@ -47,15 +47,15 @@ double func(double x) {
 }
 
 
-constexpr int fineness = 100000;
+constexpr int fineness = 10000;
 constexpr int thread_cnt = 1;
 
 double calculate_integral(int num, int threads_cnt) {
     double sum = 0;
-    double size = 2 / fineness;
-    double mid = 1 / fineness;
-    for (int i = num; i < fineness; i += threads_cnt) {
-        double x = mid + fineness * i; // (2 / fineness) / 2 + fineness * i
+    double size = 2.0 / fineness;
+    double mid = 1.0 / fineness;
+    for (double x = mid + size * num; x < 2; x += threads_cnt * size) {
+        //double x = mid + fineness * i; // (2 / fineness) / 2 + fineness * i
         sum += func(x) * size;
     }
     return sum;
@@ -70,16 +70,18 @@ int main(int argc, char *argv[]) {
         MPI_Status status;
         double answer = calculate_integral(MPI.rank, thread_cnt);
 
-        for (int i = 1; i < thread_cnt; ++i) {
-            double result;
-            MPI_Recv(&result, 1, MPI_DOUBLE, i, MPI.tag, MPI_COMM_WORLD, &status);
-            answer += result;
+        if (thread_cnt > 1) {
+            for (int i = 1; i < thread_cnt; ++i) {
+                double result = 0;
+                MPI_Recv(&result, 1, MPI_DOUBLE, i, MPI.tag, MPI_COMM_WORLD, &status);
+                answer += result;
+            }
         }
         std::cout << answer << '\n';
 
     } else {
         double result = calculate_integral(MPI.rank, thread_cnt);
-        MPI_Send(&result, 1, MPI_DOUBLE, MPI.rank, MPI.tag, MPI_COMM_WORLD);
+        MPI_Send(&result, 1, MPI_DOUBLE, MPI.main, MPI.tag, MPI_COMM_WORLD);
     }
 
 }
