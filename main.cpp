@@ -230,7 +230,7 @@ int main(int argc, char **argv) {
 
     MPI_RAI MPI(argc, argv);
     int number_of_partitions = 10;
-    long long time = 10;
+    long long time = 10000;
     Calculation calc(MPI, number_of_partitions, time);
     std::vector<double> result = calc.run();
 
