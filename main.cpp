@@ -47,7 +47,7 @@ public:
             number_of_partitions_(number_of_partitions),
             time_(time) {}
 
-    std::vector<double> run();
+    void run();
 
 
 private:
@@ -62,14 +62,14 @@ private:
         double other_right;
     };
 
-    sync_res synchronize(const int rank, const int own_left, const int own_right);
+    sync_res synchronize(const int rank, const double own_left, const double own_right);
 
     std::vector<double> calc(const int rank, const int cells_cnt);
 
 
 };
 
-Calculation::sync_res Calculation::synchronize(const int rank, const int own_left, const int own_right) {
+Calculation::sync_res Calculation::synchronize(const int rank, const double own_left, const double own_right) {
 
     MPI_Status status;
     double other_left{0}, other_right{0};
@@ -111,7 +111,8 @@ Calculation::sync_res Calculation::synchronize(const int rank, const int own_lef
         }
     }
     return {other_left, other_right};
-
+}
+/*
 //    MPI_Status status;
 //    if (commSize == 1) {
 //        *recR = right;//might be function
@@ -147,6 +148,7 @@ Calculation::sync_res Calculation::synchronize(const int rank, const int own_lef
 //        MPI_Ssend(&sendL, 1, MPI_DOUBLE, rank-1, Tag, MPI_COMM_WORLD);
 //    }
 }
+ */
 
 inline std::vector<double> Calculation::calc(const int rank, const int cells_cnt) {
     std::vector<double> previous(cells_cnt, 0), current(cells_cnt, 0);
@@ -156,11 +158,13 @@ inline std::vector<double> Calculation::calc(const int rank, const int cells_cnt
 
 
     double other_left{0}, other_right{0};
-    for (long long t = 0; t < time_; ++t/*time*/) {
+    for (long long t = 0; t < time_; ++t) {
 
 
         sync_res s = synchronize(rank, previous.front(), previous.back());
-        //std::cout << t << std::endl;
+//        if (MPI.rank == 1){
+//            std::cout << s.other_right << std::endl;
+//        }
 
         if (rank != MPI.root) {
             current[0] = previous[0] + 0.3 * (s.other_right - 2 * previous[0] + previous[1]);
@@ -168,17 +172,12 @@ inline std::vector<double> Calculation::calc(const int rank, const int cells_cnt
 
         current[0] = (rank != MPI.root) ? previous[0] + 0.3 * (s.other_right - 2 * previous[0] + previous[1]) : 1;
 
-        //if (rank != end_) {
         current[cells_cnt - 1] =
                 previous[cells_cnt - 1] +
                 0.3 * (previous[cells_cnt - 2] - 2 * previous[cells_cnt - 1] + s.other_left);
-        //}
 
 
         for (int i = 1; i < cells_cnt - 1; ++i) {
-//            if (previous[i - 1] == 0) {
-//                break;
-//            }
             current[i] = previous[i] + 0.3 * (previous[i - 1] - 2 * previous[i] + previous[i + 1]);
         }
 
@@ -187,7 +186,7 @@ inline std::vector<double> Calculation::calc(const int rank, const int cells_cnt
     return previous;
 }
 
-std::vector<double> Calculation::run() {
+void Calculation::run() {
 
     MPI_Status status;
     std::vector<double> result;
@@ -215,6 +214,9 @@ std::vector<double> Calculation::run() {
         }
 
         delete timer;
+        for (int i = 0; i < number_of_partitions_; ++i) {
+            std::cout << "U(" << std::setw(10) << std::left << i << ", T) = " << result[i] << std::endl;
+        }
 
     } else {
         auto vec = calc(MPI.rank, cells_per_index[MPI.rank]);
@@ -222,7 +224,6 @@ std::vector<double> Calculation::run() {
     }
 
 
-    return result;
 }
 
 
@@ -232,12 +233,9 @@ int main(int argc, char **argv) {
     int number_of_partitions = 10;
     long long time = 10000;
     Calculation calc(MPI, number_of_partitions, time);
-    std::vector<double> result = calc.run();
-
-    for (int i = 0; i < number_of_partitions; ++i) {
-        std::cout << "U(" << std::setw(10) << std::left << i << ", T) = " << result[i] << std::endl;
-    }
-
+    calc.run();
+    //while (true){}
+/*
 //    int end_;
 //    double other_left, other_right, own_right, own_left;
 //    MPI_Status status;
@@ -304,5 +302,5 @@ int main(int argc, char **argv) {
 //            MPI_Recv(&other_left, 1, MPI_DOUBLE, MPI.rank + 1, MPI.tag, MPI_COMM_WORLD, &status);
 //            MPI_Ssend(&own_right, 1, MPI_DOUBLE, MPI.rank + 1, MPI.tag, MPI_COMM_WORLD);
 //        }
-//    }
+//    }*/
 }
