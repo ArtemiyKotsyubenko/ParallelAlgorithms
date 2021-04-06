@@ -152,29 +152,23 @@ Calculation::sync_res Calculation::synchronize(const int rank, const double own_
 
 inline std::vector<double> Calculation::calc(const int rank, const int cells_cnt) {
     std::vector<double> previous(cells_cnt, 0), current(cells_cnt, 0);
+    int cnt = 0;
+
     if (rank == MPI.root) {
         previous[0] = 1;
     }
 
-
-    double other_left{0}, other_right{0};
     for (long long t = 0; t < time_; ++t) {
 
-
         sync_res s = synchronize(rank, previous.front(), previous.back());
-//        if (MPI.rank == 1){
-//            std::cout << s.other_right << std::endl;
-//        }
-
-        if (rank != MPI.root) {
-            current[0] = previous[0] + 0.3 * (s.other_right - 2 * previous[0] + previous[1]);
-        }
 
         current[0] = (rank != MPI.root) ? previous[0] + 0.3 * (s.other_right - 2 * previous[0] + previous[1]) : 1;
 
-        current[cells_cnt - 1] =
-                previous[cells_cnt - 1] +
-                0.3 * (previous[cells_cnt - 2] - 2 * previous[cells_cnt - 1] + s.other_left);
+        if(cells_cnt > 1) {
+            current[cells_cnt - 1] =
+                    previous[cells_cnt - 1] +
+                    0.3 * (previous[cells_cnt - 2] - 2 * previous[cells_cnt - 1] + s.other_left);
+        }
 
 
         for (int i = 1; i < cells_cnt - 1; ++i) {
@@ -200,6 +194,14 @@ void Calculation::run() {
     for (int i = 0; division_reminder > 0; ++i, --division_reminder) {
         ++cells_per_index[i];
     }
+    if(MPI.rank == 0) {
+        for (int i = 0; i < MPI.size; ++i) {
+            std::cout << i << "   " << cells_per_index[i] << std::endl;
+        }
+        std::cout << std::endl;
+    }
+
+
 
 
     if (MPI.rank == MPI.root) {
@@ -208,7 +210,8 @@ void Calculation::run() {
         std::copy(vec.begin(), vec.end(), std::back_inserter(result));
 
         for (int i = 1; i < MPI.size; ++i) {
-            std::vector<int> buff(cells_per_index[i]);
+            std::vector<double> buff(cells_per_index[i]);
+
             MPI_Recv(&buff.front(), cells_per_index[i], MPI_DOUBLE, i, MPI.tag, MPI_COMM_WORLD, &status);
             std::copy(buff.begin(), buff.end(), std::back_inserter(result));
         }
@@ -230,11 +233,10 @@ void Calculation::run() {
 int main(int argc, char **argv) {
 
     MPI_RAI MPI(argc, argv);
-    int number_of_partitions = 10;
+    int number_of_partitions = 2;
     long long time = 10000;
     Calculation calc(MPI, number_of_partitions, time);
     calc.run();
-    //while (true){}
 /*
 //    int end_;
 //    double other_left, other_right, own_right, own_left;
