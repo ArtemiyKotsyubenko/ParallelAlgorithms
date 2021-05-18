@@ -11,4 +11,4 @@ set(CMAKE_CXX_COMPILER mpicxx)
 SET(MYCOMPILE_FLAGS "-pthread -fopenmp")
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${MYCOMPILE_FLAGS}")
 
-add_executable(ParallelAlgorithms main_int.cpp main.cpp)
+add_executable(ParallelAlgorithms heat_mpi.cpp)
